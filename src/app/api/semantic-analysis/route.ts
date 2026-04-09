@@ -4,10 +4,14 @@ import OpenAI from 'openai'
 import fs from 'fs'
 import path from 'path'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy-initialize OpenAI client (avoid crashing at build time when env vars aren't set)
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' })
+  }
+  return _openai
+}
 
 interface FoldAnalysis {
   foldNumber: number
@@ -461,7 +465,7 @@ Return ONLY valid JSON in this exact format:
 }`
 
     // Call OpenAI Vision API with structured JSON output
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       response_format: { type: "json_object" },
       messages: [
@@ -535,7 +539,7 @@ Return ONLY valid JSON in this exact format:
     // Try a simpler approach without image analysis if the first attempt failed
     try {
       console.log('Attempting text-only analysis as fallback...')
-      const textOnlyResponse = await openai.chat.completions.create({
+      const textOnlyResponse = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
