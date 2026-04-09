@@ -111,9 +111,9 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
   }
 
   const summary = comparison.summary || comparison
-  const frameworks = comparison.frameworks || comparison.frameworkScorecard || []
+  const frameworks = comparison.frameworkUsage || comparison.frameworks || comparison.frameworkScorecard || []
   const commonPatterns = comparison.commonPatterns || comparison.patterns || []
-  const structures = comparison.structures || comparison.structureComparison || comparison.competitors || []
+  const structures = comparison.structureComparison || comparison.structures || comparison.competitors || []
   const blueprint = comparison.blueprint || comparison.recommendedPage || comparison.recommendation || {}
   const recommendations = comparison.recommendations || []
 
@@ -121,8 +121,16 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
   const competitorNames: string[] = summary.competitors
     || structures.map((s: any) => s.name || s.competitor || s.competitorName)
     || []
-  const dominantFramework = summary.dominantFramework || blueprint.framework || {}
-  const recommendedFolds = summary.recommendedFolds ?? blueprint.folds?.length ?? 0
+  const dominantFramework =
+    frameworks.find?.((f: any) => f.verdict === 'dominant')?.framework
+    || blueprint.recommendedFramework
+    || summary.dominantFramework
+    || 'Analyzing...'
+  const recommendedFolds =
+    blueprint.recommendedFolds?.length
+    ?? summary.recommendedFolds
+    ?? blueprint.folds?.length
+    ?? 0
 
   return (
     <div className="space-y-6" style={{ background: '#0A0F1C' }}>
@@ -155,11 +163,8 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
             <span className="font-mono text-[11px] uppercase tracking-wider">Dominant Framework</span>
           </div>
           <p className="text-lg font-bold text-[#22D3EE] font-mono">
-            {typeof dominantFramework === 'string' ? dominantFramework : dominantFramework.name || 'N/A'}
+            {dominantFramework}
           </p>
-          {dominantFramework.score != null && (
-            <span className="font-mono text-[11px] text-[#94A3B8]">Score: {dominantFramework.score}</span>
-          )}
         </div>
 
         {/* Recommended folds */}
@@ -379,7 +384,7 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
       )}
 
       {/* ── Section 5: Blueprint — Your Recommended Page ── */}
-      {blueprint && (blueprint.framework || blueprint.folds || blueprint.mustHave || blueprint.avoid) && (
+      {blueprint && (blueprint.recommendedFramework || blueprint.framework || blueprint.recommendedFolds || blueprint.folds || blueprint.mustHaveElements || blueprint.mustHave || blueprint.avoidElements || blueprint.avoid) && (
         <div className="rounded-xl overflow-hidden" style={{ background: '#1E293B', border: '1px solid rgba(34,211,238,0.2)' }}>
           <div className="px-5 py-4 flex items-center gap-3" style={{ background: 'rgba(34,211,238,0.05)', borderBottom: '1px solid rgba(34,211,238,0.1)' }}>
             <span className="text-[#22D3EE]"><BlueprintIcon /></span>
@@ -390,30 +395,25 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
 
           <div className="p-5 space-y-6">
             {/* Recommended Framework */}
-            {blueprint.framework && (
+            {(blueprint.recommendedFramework || blueprint.framework) && (
               <div className="text-center py-4 rounded-xl" style={{ background: '#0F172A' }}>
                 <span className="font-mono text-[10px] text-[#64748B] uppercase tracking-wider block mb-2">
                   Recommended Framework
                 </span>
                 <p className="text-2xl font-bold text-[#22D3EE] font-mono">
-                  {typeof blueprint.framework === 'string' ? blueprint.framework : blueprint.framework.name}
+                  {blueprint.recommendedFramework || (typeof blueprint.framework === 'string' ? blueprint.framework : blueprint.framework?.name) || 'N/A'}
                 </p>
-                {blueprint.framework.description && (
-                  <p className="text-[13px] text-[#94A3B8] mt-2 max-w-lg mx-auto">
-                    {blueprint.framework.description}
-                  </p>
-                )}
               </div>
             )}
 
             {/* Fold-by-fold blueprint */}
-            {blueprint.folds && blueprint.folds.length > 0 && (
+            {((blueprint.recommendedFolds && blueprint.recommendedFolds.length > 0) || (blueprint.folds && blueprint.folds.length > 0)) && (
               <div>
                 <h4 className="font-mono text-[11px] text-[#64748B] uppercase tracking-wider mb-3">
                   Fold-by-Fold Blueprint
                 </h4>
                 <div className="space-y-3">
-                  {blueprint.folds.map((fold: any, i: number) => (
+                  {(blueprint.recommendedFolds || blueprint.folds).map((fold: any, i: number) => (
                     <div
                       key={i}
                       className="rounded-lg p-4 flex gap-4"
@@ -424,7 +424,7 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
                         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-mono text-sm font-bold"
                         style={{ background: 'rgba(34,211,238,0.15)', color: '#22D3EE' }}
                       >
-                        {fold.number ?? i + 1}
+                        {fold.foldNumber ?? fold.number ?? i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap mb-1">
@@ -463,13 +463,13 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
             {/* Must-have and Avoid side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Must-have elements */}
-              {blueprint.mustHave && blueprint.mustHave.length > 0 && (
+              {((blueprint.mustHaveElements && blueprint.mustHaveElements.length > 0) || (blueprint.mustHave && blueprint.mustHave.length > 0)) && (
                 <div className="rounded-lg p-4" style={{ background: '#0F172A' }}>
                   <h4 className="font-mono text-[11px] text-[#22D3EE] uppercase tracking-wider mb-3">
                     Must-Have Elements
                   </h4>
                   <ul className="space-y-2">
-                    {blueprint.mustHave.map((item: string, i: number) => (
+                    {(blueprint.mustHaveElements || blueprint.mustHave).map((item: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-[#94A3B8]">
                         <span className="flex-shrink-0 mt-0.5"><CheckIcon /></span>
                         {item}
@@ -480,13 +480,13 @@ export default function CompetitorComparison({ comparison }: CompetitorCompariso
               )}
 
               {/* Avoid elements */}
-              {blueprint.avoid && blueprint.avoid.length > 0 && (
+              {((blueprint.avoidElements && blueprint.avoidElements.length > 0) || (blueprint.avoid && blueprint.avoid.length > 0)) && (
                 <div className="rounded-lg p-4" style={{ background: '#0F172A' }}>
                   <h4 className="font-mono text-[11px] text-[#EF4444] uppercase tracking-wider mb-3">
                     Avoid
                   </h4>
                   <ul className="space-y-2">
-                    {blueprint.avoid.map((item: string, i: number) => (
+                    {(blueprint.avoidElements || blueprint.avoid).map((item: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-[#94A3B8]">
                         <span className="flex-shrink-0 mt-0.5"><XIcon /></span>
                         {item}

@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/Layout/DashboardLayout'
 
 export default function CapturePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [url, setUrl] = useState('')
   const [competitorId, setCompetitorId] = useState('')
   const [deviceType, setDeviceType] = useState('desktop')
@@ -23,6 +24,11 @@ export default function CapturePage() {
     { label: 'Extract content & tech stack', num: '3' },
     { label: 'Save to database', num: '4' },
   ]
+
+  useEffect(() => {
+    const comp = searchParams.get('competitor')
+    if (comp) setCompetitorId(comp)
+  }, [searchParams])
 
   useEffect(() => {
     fetch('/api/competitors')

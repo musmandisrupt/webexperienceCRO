@@ -7,13 +7,20 @@ interface FoldAnalysisDisplayProps {
   analysis: SemanticAnalysis
   isLoading?: boolean
   screenshotUrl?: string
+  landingPageId?: string
+  onInsightSaved?: () => void
 }
 
-export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl }: FoldAnalysisDisplayProps) {
+export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl, landingPageId, onInsightSaved }: FoldAnalysisDisplayProps) {
   const [expandedFolds, setExpandedFolds] = React.useState<Set<number>>(new Set([1, 2]))
-  const [activeTab, setActiveTab] = React.useState<'folds' | 'insights' | 'flow' | 'frameworks'>('folds')
+  const [activeTab, setActiveTab] = React.useState<'flow' | 'insights' | 'folds' | 'frameworks'>('flow')
   const [showLegend, setShowLegend] = React.useState(false)
   const [imgDimensions, setImgDimensions] = React.useState<{ width: number; height: number } | null>(null)
+  const [insightModal, setInsightModal] = React.useState<{
+    text: string
+    category: 'STEAL' | 'ADAPT' | 'AVOID'
+  } | null>(null)
+  const [savingInsight, setSavingInsight] = React.useState(false)
 
   // Load screenshot dimensions to calculate fold slices
   React.useEffect(() => {
@@ -46,11 +53,37 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
     setExpandedFolds(next)
   }
 
+  const saveInsight = async () => {
+    if (!insightModal || !landingPageId) return
+    setSavingInsight(true)
+    try {
+      const res = await fetch('/api/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: insightModal.text.substring(0, 100),
+          description: insightModal.text,
+          category: insightModal.category,
+          confidence: 4,
+          landingPageId,
+        }),
+      })
+      if (res.ok) {
+        setInsightModal(null)
+        onInsightSaved?.()
+      }
+    } catch (e) {
+      console.error('Failed to save insight', e)
+    } finally {
+      setSavingInsight(false)
+    }
+  }
+
   const tabs = [
-    { key: 'folds' as const, label: 'Fold Analysis' },
-    { key: 'flow' as const, label: 'Page Flow' },
+    { key: 'flow' as const, label: 'Overview' },
     { key: 'insights' as const, label: 'Insights' },
-    { key: 'frameworks' as const, label: 'Messaging Framework' },
+    { key: 'folds' as const, label: 'Fold Analysis' },
+    { key: 'frameworks' as const, label: 'Framework' },
   ]
 
   const getScoreColor = (score: number) => {
@@ -61,6 +94,53 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
 
   return (
     <div>
+      {(analysis.overallScores || analysis.pageFlow) && (
+        <div className="bg-[#1E293B] rounded-xl p-5 mb-6">
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex-1 min-w-0">
+              {analysis.pageFlow?.primaryGoal && (
+                <p className="text-sm font-medium text-white mb-1 leading-snug">{analysis.pageFlow.primaryGoal}</p>
+              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                {analysis.messagingFrameworks?.primaryFramework && (
+                  <span className="font-mono text-[10px] font-bold text-[#22D3EE] bg-[#22D3EE]/10 px-2 py-0.5 rounded">
+                    {analysis.messagingFrameworks.primaryFramework}
+                  </span>
+                )}
+                {analysis.messagingFrameworks?.secondaryFrameworks?.map((fw: string) => (
+                  <span key={fw} className="font-mono text-[10px] text-[#64748B] bg-[#0F172A] px-2 py-0.5 rounded">{fw}</span>
+                ))}
+                {analysis.pageFlow?.totalFolds > 0 && (
+                  <span className="font-mono text-[10px] text-[#64748B]">{analysis.pageFlow.totalFolds} folds detected</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-stretch gap-3">
+              {analysis.overallScores?.conversionScore !== undefined && (() => {
+                const score = analysis.overallScores.conversionScore
+                const color = getScoreColor(score * 10)
+                return (
+                  <div className="text-center bg-[#0F172A] rounded-lg px-5 py-3">
+                    <p className="font-mono text-[9px] font-semibold text-[#475569] tracking-[1.5px] mb-1">CONVERSION</p>
+                    <p className="text-2xl font-bold" style={{ color }}>{score}<span className="text-sm text-[#475569]">/10</span></p>
+                  </div>
+                )
+              })()}
+              {analysis.overallScores?.valuePropositionClarity !== undefined && (() => {
+                const score = analysis.overallScores.valuePropositionClarity
+                const color = getScoreColor(score * 10)
+                return (
+                  <div className="text-center bg-[#0F172A] rounded-lg px-5 py-3">
+                    <p className="font-mono text-[9px] font-semibold text-[#475569] tracking-[1.5px] mb-1">VALUE PROP</p>
+                    <p className="text-2xl font-bold" style={{ color }}>{score}<span className="text-sm text-[#475569]">/10</span></p>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabs + Legend Toggle */}
       <div className="flex items-center justify-between border-b border-[#1E293B] mb-6">
         <div className="flex">
@@ -217,7 +297,11 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
             return analysis.foldAnalysis.map((fold, index) => {
             const foldNum = fold?.foldNumber || index + 1
             const isExpanded = expandedFolds.has(foldNum)
-            const conversionScore = fold?.conversionScore || (fold?.conversionPoints?.length ? fold.conversionPoints.length * 20 : 0)
+            const conversionScore = fold?.scores?.conversionPotential
+              ? fold.scores.conversionPotential * 10
+              : fold?.conversionPoints?.length
+                ? Math.min(fold.conversionPoints.length * 20, 100)
+                : 0
             const scoreColor = getScoreColor(conversionScore)
 
             return (
@@ -257,46 +341,31 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="p-5 space-y-4">
-                    {/* Fold Screenshot Preview */}
-                    {screenshotUrl && imgDimensions && totalFolds > 0 && (() => {
-                      const foldHeight = imgDimensions.height / totalFolds
-                      const offsetY = (foldNum - 1) * foldHeight
-                      // Scale: show the fold at a reasonable preview height
-                      const previewHeight = 200
-                      const scale = previewHeight / foldHeight
-                      const scaledWidth = imgDimensions.width * scale
+                    {/* Fold preview disabled — equal-height division produces inaccurate crops.
+                        Re-enable when real pixel ranges are available from DOM-based fold detection. */}
 
-                      return (
-                        <div>
-                          <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-2">FOLD PREVIEW</p>
-                          <div
-                            className="relative rounded-lg overflow-hidden border border-[#334155] bg-[#0F172A]"
-                            style={{ height: previewHeight, width: '100%' }}
-                          >
-                            <img
-                              src={screenshotUrl}
-                              alt={`Fold ${foldNum} preview`}
-                              className="absolute left-1/2 -translate-x-1/2"
-                              style={{
-                                width: scaledWidth,
-                                height: imgDimensions.height * scale,
-                                objectFit: 'cover',
-                                top: -(offsetY * scale),
-                                maxWidth: 'none',
-                              }}
-                            />
-                            {/* Fold number overlay */}
-                            <div className="absolute top-2 left-2 font-mono text-[10px] font-bold text-[#22D3EE] bg-[#0A0F1C]/80 px-2 py-0.5 rounded">
-                              FOLD {foldNum}
+                    {fold?.scores && (
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: 'CLARITY', value: fold.scores.clarity },
+                          { label: 'PERSUASION', value: fold.scores.persuasion },
+                          { label: 'CONVERSION', value: fold.scores.conversionPotential },
+                        ].map(({ label, value }) => {
+                          const color = value >= 8 ? '#22D3EE' : value >= 6 ? '#F59E0B' : '#EF4444'
+                          return (
+                            <div key={label} className="bg-[#0F172A] rounded-lg p-3">
+                              <p className="font-mono text-[9px] font-semibold text-[#64748B] tracking-[1.5px] mb-2">{label}</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 rounded-full bg-[#1E293B]">
+                                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${value * 10}%`, backgroundColor: color }} />
+                                </div>
+                                <span className="font-mono text-xs font-bold" style={{ color }}>{value}/10</span>
+                              </div>
                             </div>
-                            {/* Pixel range overlay */}
-                            <div className="absolute bottom-2 right-2 font-mono text-[9px] text-[#64748B] bg-[#0A0F1C]/80 px-2 py-0.5 rounded">
-                              {fold?.pixelRange || `${Math.round(offsetY)}px — ${Math.round(offsetY + foldHeight)}px`}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })()}
+                          )
+                        })}
+                      </div>
+                    )}
 
                     {/* Analysis + Elements row */}
                     <div className="flex gap-5">
@@ -369,18 +438,119 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
             </div>
           </div>
 
+          {analysis.pageFlow?.conversionFunnel && Array.isArray(analysis.pageFlow.conversionFunnel) && analysis.pageFlow.conversionFunnel.length > 0 && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-4">CONVERSION FUNNEL</p>
+              <div className="flex items-stretch gap-0">
+                {analysis.pageFlow.conversionFunnel.map((step: string, i: number) => {
+                  const colors = ['#22D3EE', '#38BDF8', '#60A5FA', '#818CF8']
+                  const color = colors[i % colors.length]
+                  return (
+                    <div key={i} className="flex-1 relative">
+                      <div className="rounded-lg p-3 mr-1" style={{ backgroundColor: `${color}15`, borderLeft: `2px solid ${color}` }}>
+                        <p className="font-mono text-[9px] font-bold mb-1" style={{ color }}>{i + 1}</p>
+                        <p className="text-xs text-[#94A3B8] leading-relaxed">{step}</p>
+                      </div>
+                      {i < analysis.pageFlow.conversionFunnel.length - 1 && (
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+                          <svg className="w-3 h-3 text-[#334155]" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="bg-[#1E293B] rounded-xl p-5">
             <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-2">PAGE STRUCTURE</p>
             <p className="text-sm text-[#94A3B8]">
               This page contains <span className="font-bold text-white">{analysis.pageFlow?.totalFolds || 0} distinct visual folds</span>, each designed to guide users through the conversion journey.
             </p>
           </div>
+
+          {analysis.overallScores && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#1E293B] rounded-xl p-5">
+                  <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-3">CONVERSION SCORE</p>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold" style={{ color: getScoreColor((analysis.overallScores.conversionScore || 0) * 10) }}>
+                      {analysis.overallScores.conversionScore}
+                    </span>
+                    <span className="text-[#475569] text-lg mb-1">/10</span>
+                  </div>
+                  {analysis.overallScores.conversionJustification && (
+                    <p className="text-xs text-[#64748B] leading-relaxed">{analysis.overallScores.conversionJustification}</p>
+                  )}
+                </div>
+                <div className="bg-[#1E293B] rounded-xl p-5">
+                  <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-3">VALUE PROP CLARITY</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-4xl font-bold" style={{ color: getScoreColor((analysis.overallScores.valuePropositionClarity || 0) * 10) }}>
+                      {analysis.overallScores.valuePropositionClarity}
+                    </span>
+                    <span className="text-[#475569] text-lg mb-1">/10</span>
+                  </div>
+                </div>
+              </div>
+
+              {analysis.overallScores.ctaEffectiveness && (
+                <div className="bg-[#1E293B] rounded-xl p-5">
+                  <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-4">CTA EFFECTIVENESS</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(analysis.overallScores.ctaEffectiveness).map(([key, value]) => (
+                      <div key={key} className="bg-[#0F172A] rounded-lg p-3">
+                        <p className="font-mono text-[9px] font-semibold text-[#475569] tracking-[1px] mb-1 capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </p>
+                        <p className="text-xs text-[#94A3B8]">{value as string}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
       {/* Insights Tab */}
       {activeTab === 'insights' && (
         <div className="space-y-5">
+          {analysis.persuasionInventory && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#22D3EE] tracking-[2px] mb-4">PERSUASION ARSENAL</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { key: 'trustSignals', label: 'TRUST SIGNALS', color: '#22D3EE' },
+                  { key: 'socialProof', label: 'SOCIAL PROOF', color: '#818CF8' },
+                  { key: 'urgencyTriggers', label: 'URGENCY TRIGGERS', color: '#F59E0B' },
+                  { key: 'emotionalTriggers', label: 'EMOTIONAL TRIGGERS', color: '#F472B6' },
+                ].map(({ key, label, color }) => {
+                  const items = (analysis.persuasionInventory as any)[key] as string[]
+                  if (!items || items.length === 0) return null
+                  return (
+                    <div key={key}>
+                      <p className="font-mono text-[9px] font-semibold tracking-[1.5px] mb-2" style={{ color }}>{label}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {items.map((item: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 rounded text-[11px] text-[#94A3B8]"
+                            style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30` }}>
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Strengths */}
           <div className="bg-[#1E293B] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -389,9 +559,20 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
             </div>
             <ul className="space-y-2">
               {analysis.insights?.strengths && Array.isArray(analysis.insights.strengths) ? analysis.insights.strengths.map((s, i) => (
-                <li key={i} className="flex items-start gap-2">
+                <li key={i} className="flex items-start gap-2 group">
                   <span className="text-[#22D3EE] mt-0.5">•</span>
-                  <span className="text-[13px] text-[#94A3B8]">{s}</span>
+                  <span className="text-[13px] text-[#94A3B8] flex-1">{s}</span>
+                  {landingPageId && (
+                    <button
+                      onClick={() => setInsightModal({ text: s, category: 'STEAL' })}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 p-1 rounded hover:bg-[#22D3EE]/10 text-[#475569] hover:text-[#22D3EE]"
+                      title="Save as Insight"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                    </button>
+                  )}
                 </li>
               )) : <li className="text-[13px] text-[#475569]">No strengths data</li>}
             </ul>
@@ -405,9 +586,20 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
             </div>
             <ul className="space-y-2">
               {analysis.insights?.improvements && Array.isArray(analysis.insights.improvements) ? analysis.insights.improvements.map((s, i) => (
-                <li key={i} className="flex items-start gap-2">
+                <li key={i} className="flex items-start gap-2 group">
                   <span className="text-[#F59E0B] mt-0.5">•</span>
-                  <span className="text-[13px] text-[#94A3B8]">{s}</span>
+                  <span className="text-[13px] text-[#94A3B8] flex-1">{s}</span>
+                  {landingPageId && (
+                    <button
+                      onClick={() => setInsightModal({ text: s, category: 'ADAPT' })}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 p-1 rounded hover:bg-[#22D3EE]/10 text-[#475569] hover:text-[#22D3EE]"
+                      title="Save as Insight"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                    </button>
+                  )}
                 </li>
               )) : <li className="text-[13px] text-[#475569]">No improvements data</li>}
             </ul>
@@ -421,9 +613,20 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
             </div>
             <ul className="space-y-2">
               {analysis.insights?.conversionOptimization && Array.isArray(analysis.insights.conversionOptimization) ? analysis.insights.conversionOptimization.map((s, i) => (
-                <li key={i} className="flex items-start gap-2">
+                <li key={i} className="flex items-start gap-2 group">
                   <span className="text-[#22D3EE] mt-0.5">•</span>
-                  <span className="text-[13px] text-[#94A3B8]">{s}</span>
+                  <span className="text-[13px] text-[#94A3B8] flex-1">{s}</span>
+                  {landingPageId && (
+                    <button
+                      onClick={() => setInsightModal({ text: s, category: 'STEAL' })}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 p-1 rounded hover:bg-[#22D3EE]/10 text-[#475569] hover:text-[#22D3EE]"
+                      title="Save as Insight"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                    </button>
+                  )}
                 </li>
               )) : <li className="text-[13px] text-[#475569]">No conversion data</li>}
             </ul>
@@ -559,6 +762,43 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
         <span>Analyzed {analysis.metadata?.analysisDate ? new Date(analysis.metadata.analysisDate).toLocaleDateString() : ''}</span>
         <span>{((analysis.metadata?.processingTime || 0) / 1000).toFixed(2)}s processing</span>
       </div>
+
+      {insightModal && (
+        <div className="fixed inset-0 bg-[#0A0F1C]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1E293B] rounded-2xl p-6 w-full max-w-md border border-[#334155]">
+            <h3 className="text-white font-semibold mb-4">Save as Insight</h3>
+            <p className="text-sm text-[#94A3B8] mb-4 bg-[#0F172A] rounded-lg p-3">{insightModal.text}</p>
+            <div className="mb-4">
+              <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[1.5px] mb-2">CATEGORY</p>
+              <div className="flex gap-2">
+                {(['STEAL', 'ADAPT', 'AVOID'] as const).map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setInsightModal({ ...insightModal, category: cat })}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                      insightModal.category === cat
+                        ? cat === 'STEAL' ? 'bg-[#22D3EE] text-[#0A0F1C]'
+                          : cat === 'ADAPT' ? 'bg-[#F59E0B] text-[#0A0F1C]'
+                          : 'bg-[#EF4444] text-white'
+                        : 'bg-[#0F172A] text-[#64748B] hover:text-white'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setInsightModal(null)} className="flex-1 py-2.5 rounded-lg bg-[#0F172A] text-sm text-[#64748B] hover:text-white">
+                Cancel
+              </button>
+              <button onClick={saveInsight} disabled={savingInsight} className="flex-1 py-2.5 rounded-lg bg-[#22D3EE] text-[#0A0F1C] text-sm font-semibold disabled:opacity-50">
+                {savingInsight ? 'Saving...' : 'Save Insight'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

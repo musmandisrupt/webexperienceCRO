@@ -108,6 +108,12 @@ export default function SemanticAnalysisPage() {
 
   const runAnalysis = async () => {
     if (!selectedPage) return
+    if (analysis) {
+      const confirmed = window.confirm(
+        `Re-analyzing "${selectedPage?.title || selectedPage?.url}" will replace the existing analysis. Continue?`
+      )
+      if (!confirmed) return
+    }
     setIsAnalyzing(true)
     try {
       const res = await fetch('/api/semantic-analysis', {
@@ -426,7 +432,12 @@ export default function SemanticAnalysisPage() {
                 </div>
 
                 {analysis ? (
-                  <FoldAnalysisDisplay analysis={analysis} screenshotUrl={selectedPage?.screenshotUrl} />
+                  <FoldAnalysisDisplay
+                    analysis={analysis}
+                    screenshotUrl={selectedPage?.screenshotUrl}
+                    landingPageId={selectedPage?.id}
+                    onInsightSaved={() => toast.success('Insight saved!')}
+                  />
                 ) : (
                   <div className="bg-[#1E293B] rounded-xl p-12 text-center">
                     <svg className="w-12 h-12 text-[#475569] mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -442,12 +453,30 @@ export default function SemanticAnalysisPage() {
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center h-full">
-                <div className="text-center">
+                <div className="text-center max-w-md">
                   <svg className="w-12 h-12 text-[#1E293B] mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                   </svg>
-                  <h3 className="text-lg font-medium text-white mb-2">Select a Landing Page</h3>
-                  <p className="text-sm text-[#64748B]">Choose a page from the list to view or run analysis</p>
+                  {landingPages.length === 0 ? (
+                    <>
+                      <h3 className="text-lg font-medium text-white mb-2">No Pages Captured Yet</h3>
+                      <p className="text-sm text-[#64748B] mb-4">Capture a landing page first, then come back to analyze it.</p>
+                      <a
+                        href="/capture"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#22D3EE] text-[#0A0F1C] text-sm font-semibold hover:bg-[#22D3EE]/90 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Capture a Page
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-lg font-medium text-white mb-2">Select a Landing Page</h3>
+                      <p className="text-sm text-[#64748B]">Choose a page from the list to view or run analysis</p>
+                    </>
+                  )}
                 </div>
               </div>
             )
