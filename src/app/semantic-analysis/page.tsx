@@ -481,6 +481,12 @@ export default function SemanticAnalysisPage() {
                     analysis={analysis}
                     screenshotUrl={selectedPage?.screenshotUrl}
                     landingPageId={selectedPage?.id}
+                    foldBoundaries={(() => {
+                      try {
+                        const raw = (selectedPage as any)?.foldBoundaries
+                        return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : undefined
+                      } catch { return undefined }
+                    })()}
                     onInsightSaved={() => toast.success('Insight saved!')}
                     avgBenchmark={avgConversionScore}
                   />

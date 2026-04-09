@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       techStack: JSON.stringify(captureResult.techStack),
       visualSections: captureResult.visualSections ? JSON.stringify(captureResult.visualSections) : null,
       contentHierarchy: captureResult.contentHierarchy ? JSON.stringify(captureResult.contentHierarchy) : null,
+      foldBoundaries: (captureResult as any).foldBoundaries ? JSON.stringify((captureResult as any).foldBoundaries) : null,
       capturedAt: new Date(),
       updatedAt: new Date(),
     }

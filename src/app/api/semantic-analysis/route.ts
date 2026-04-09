@@ -311,7 +311,8 @@ async function analyzePageWithLLM(
   copiedText: string,
   visualSections: any[],
   contentHierarchy: any,
-  screenshotPath: string
+  screenshotPath: string,
+  foldBoundaries?: any[] | null
 ): Promise<SemanticAnalysisResult> {
   const startTime = Date.now()
   
@@ -345,7 +346,7 @@ Extracted page text (first 3000 chars):
 """
 ${truncatedText}
 """
-
+${foldBoundaries ? `\nDetected fold boundaries (pixel positions):\n${foldBoundaries.map((f: any) => `  Fold ${f.foldIndex}: "${f.title}" (${f.type}) — ${f.pixelStart}px to ${f.pixelEnd}px`).join('\n')}\n\nUse these fold boundaries to map your analysis to the correct page sections.\n` : ''}
 Perform the following analysis:
 
 1. FOLD-BY-FOLD BREAKDOWN: Identify each visual fold (viewport-height section) from top to bottom. For each fold provide:
@@ -1086,6 +1087,7 @@ export async function POST(request: NextRequest) {
     // Parse existing data
     const visualSections = landingPage.visualSections ? JSON.parse(landingPage.visualSections) : []
     const contentHierarchy = landingPage.contentHierarchy ? JSON.parse(landingPage.contentHierarchy) : {}
+    const foldBoundaries = landingPage.foldBoundaries ? JSON.parse(landingPage.foldBoundaries) : null
 
     // Perform LLM analysis
     const analysisResult = await analyzePageWithLLM(
@@ -1095,7 +1097,8 @@ export async function POST(request: NextRequest) {
       landingPage.copiedText || '',
       visualSections,
       contentHierarchy,
-      landingPage.screenshotUrl || ''
+      landingPage.screenshotUrl || '',
+      foldBoundaries
     )
 
     console.log('LLM analysis completed', { 

@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { detectFoldsFromMarkdown, FoldBoundary } from './fold-detector'
 
 interface FirecrawlCaptureOptions {
   url: string
@@ -18,6 +19,7 @@ interface FirecrawlCaptureResult {
   visualSections: any[]
   contentHierarchy: any
   markdown?: string
+  foldBoundaries?: FoldBoundary[]
 }
 
 /**
@@ -222,6 +224,16 @@ export async function firecrawlCapture(options: FirecrawlCaptureOptions): Promis
   const title = data.metadata?.title || ''
   const description = data.metadata?.description || data.metadata?.ogDescription || ''
 
+  // Detect fold boundaries from markdown structure
+  let foldBoundaries: FoldBoundary[] | undefined
+  if (markdown) {
+    // We don't know screenshot height yet, use a reasonable estimate
+    // It will be refined when the screenshot is loaded in the frontend
+    const estimatedHeight = markdown.split('\n').filter((l: string) => l.trim()).length * 25
+    foldBoundaries = detectFoldsFromMarkdown(markdown, Math.max(estimatedHeight, 3000))
+    console.log(`[Firecrawl] Detected ${foldBoundaries.length} fold boundaries`)
+  }
+
   return {
     url: options.url,
     title,
@@ -232,5 +244,6 @@ export async function firecrawlCapture(options: FirecrawlCaptureOptions): Promis
     visualSections: extractSectionsFromMarkdown(markdown),
     contentHierarchy: extractHierarchyFromMarkdown(markdown),
     markdown,
+    foldBoundaries,
   }
 }

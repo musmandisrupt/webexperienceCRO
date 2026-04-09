@@ -38,6 +38,7 @@ model LandingPage {
   visualSections    String? // JSON string of visual sections
   contentHierarchy  String? // JSON string of content hierarchy
   semanticAnalysis  String? // JSON string of semantic analysis results
+  foldBoundaries    String? // JSON string of detected fold pixel boundaries
   capturedAt        DateTime @default(now())
   updatedAt         DateTime @updatedAt
   

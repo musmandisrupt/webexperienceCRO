@@ -8,11 +8,12 @@ interface FoldAnalysisDisplayProps {
   isLoading?: boolean
   screenshotUrl?: string
   landingPageId?: string
+  foldBoundaries?: Array<{ foldIndex: number; title: string; type: string; pixelStart: number; pixelEnd: number }>
   onInsightSaved?: () => void
   avgBenchmark?: string | null
 }
 
-export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl, landingPageId, onInsightSaved, avgBenchmark }: FoldAnalysisDisplayProps) {
+export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl, landingPageId, foldBoundaries, onInsightSaved, avgBenchmark }: FoldAnalysisDisplayProps) {
   const [expandedFolds, setExpandedFolds] = React.useState<Set<number>>(new Set([1, 2]))
   const [activeTab, setActiveTab] = React.useState<'flow' | 'insights' | 'folds' | 'frameworks'>('flow')
   const [showLegend, setShowLegend] = React.useState(false)
@@ -342,8 +343,40 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="p-5 space-y-4">
-                    {/* Fold preview disabled — equal-height division produces inaccurate crops.
-                        Re-enable when real pixel ranges are available from DOM-based fold detection. */}
+                    {/* Fold Preview — uses real fold boundaries when available */}
+                    {screenshotUrl && imgDimensions && (() => {
+                      // Find matching fold boundary for this fold
+                      const boundary = foldBoundaries?.find(b => b.foldIndex === foldNum)
+                      if (!boundary) return null
+
+                      const scale = 200 / boundary.estimatedHeight
+                      const scaledWidth = imgDimensions.width * scale
+                      const scaledTotalHeight = imgDimensions.height * scale
+                      // Recalculate pixel positions relative to actual screenshot height
+                      const totalBoundaryHeight = foldBoundaries?.[foldBoundaries.length - 1]?.pixelEnd || imgDimensions.height
+                      const ratio = imgDimensions.height / totalBoundaryHeight
+                      const offsetY = boundary.pixelStart * ratio * scale
+
+                      return (
+                        <div>
+                          <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px] mb-2">FOLD PREVIEW</p>
+                          <div className="relative rounded-lg overflow-hidden border border-[#334155] bg-[#0F172A]" style={{ height: 200, width: '100%' }}>
+                            <img
+                              src={screenshotUrl}
+                              alt={`Fold ${foldNum} preview`}
+                              className="absolute left-1/2 -translate-x-1/2"
+                              style={{ width: scaledWidth, height: scaledTotalHeight, objectFit: 'cover', top: -offsetY, maxWidth: 'none' }}
+                            />
+                            <div className="absolute top-2 left-2 font-mono text-[10px] font-bold text-[#22D3EE] bg-[#0A0F1C]/80 px-2 py-0.5 rounded">
+                              FOLD {foldNum} — {boundary.type}
+                            </div>
+                            <div className="absolute bottom-2 right-2 font-mono text-[9px] text-[#64748B] bg-[#0A0F1C]/80 px-2 py-0.5 rounded">
+                              {boundary.pixelStart}px — {boundary.pixelEnd}px
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
 
                     {fold?.scores && (
                       <div className="grid grid-cols-3 gap-3 mb-4">
