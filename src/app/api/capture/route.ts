@@ -47,14 +47,24 @@ export async function POST(request: NextRequest) {
         captureMethod = 'firecrawl'
         console.log(`[${requestId}] Firecrawl succeeded`)
       } catch (fcError) {
-        console.warn(`[${requestId}] Firecrawl failed, falling back to Playwright:`, fcError instanceof Error ? fcError.message : fcError)
-        captureResult = await pageCapture.capture({ url, deviceType, fullPage, progressive })
-        captureMethod = 'playwright-fallback'
+        console.warn(`[${requestId}] Firecrawl failed:`, fcError instanceof Error ? fcError.message : fcError)
+        // Try Playwright fallback only if available
+        try {
+          captureResult = await pageCapture.capture({ url, deviceType, fullPage, progressive })
+          captureMethod = 'playwright-fallback'
+        } catch (pwError) {
+          throw new Error(`Firecrawl failed: ${fcError instanceof Error ? fcError.message : 'Unknown'}. Playwright also unavailable: ${pwError instanceof Error ? pwError.message : 'Unknown'}`)
+        }
       }
     } else {
-      console.log(`[${requestId}] No FIRECRAWL_API_KEY, using Playwright`)
-      captureResult = await pageCapture.capture({ url, deviceType, fullPage, progressive })
-      captureMethod = 'playwright'
+      // No Firecrawl key — try Playwright
+      try {
+        console.log(`[${requestId}] No FIRECRAWL_API_KEY, using Playwright`)
+        captureResult = await pageCapture.capture({ url, deviceType, fullPage, progressive })
+        captureMethod = 'playwright'
+      } catch (pwError) {
+        throw new Error('No FIRECRAWL_API_KEY configured and Playwright is not available. Please set FIRECRAWL_API_KEY in environment variables.')
+      }
     }
 
     console.log(`[${requestId}] Capture done. Method: ${captureMethod}, Title: ${captureResult.title}`)
