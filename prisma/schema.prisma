@@ -42,6 +42,7 @@ model LandingPage {
   updatedAt         DateTime @updatedAt
   
   competitorId      String?
+  isOwned           Boolean  @default(false)
   competitor        Competitor? @relation(fields: [competitorId], references: [id], onDelete: Cascade)
   
   insights          Insight[]

@@ -78,6 +78,20 @@ export default function SemanticAnalysisPage() {
     return landingPages.filter(p => p.semanticAnalysis)
   }, [landingPages])
 
+  const avgConversionScore = useMemo(() => {
+    const scores = landingPages
+      .filter(p => p.semanticAnalysis)
+      .map(p => {
+        try {
+          const parsed = typeof p.semanticAnalysis === 'string' ? JSON.parse(p.semanticAnalysis) : p.semanticAnalysis
+          return parsed?.overallScores?.conversionScore || null
+        } catch { return null }
+      })
+      .filter(Boolean) as number[]
+    if (scores.length === 0) return null
+    return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+  }, [landingPages])
+
   const handlePageSelect = (page: LandingPage) => {
     if (viewMode === 'compare') {
       toggleCompareSelection(page.id)
@@ -300,10 +314,27 @@ export default function SemanticAnalysisPage() {
                       <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{ color: status.color, backgroundColor: status.bg }}>
                         {status.icon}
                       </span>
+                      {(() => {
+                        try {
+                          const a = typeof page.semanticAnalysis === 'string' ? JSON.parse(page.semanticAnalysis) : page.semanticAnalysis
+                          const score = a?.overallScores?.conversionScore
+                          if (score) {
+                            const color = score >= 8 ? '#22D3EE' : score >= 6 ? '#F59E0B' : '#EF4444'
+                            return <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ color, backgroundColor: `${color}15` }}>{score}/10</span>
+                          }
+                        } catch {}
+                        return null
+                      })()}
                     </div>
                     <p className={`font-mono text-[11px] text-[#475569] truncate ${viewMode === 'compare' ? 'ml-6' : ''}`}>
                       {page.url}
                     </p>
+                    {viewMode === 'compare' && selectedForCompare.has(page.id) && page.screenshotUrl && (
+                      <div className="mt-2 ml-6">
+                        <img src={page.screenshotUrl} alt="preview"
+                          className="w-full h-12 object-cover object-top rounded border border-[#334155] opacity-70" />
+                      </div>
+                    )}
                   </button>
                 )
               })
@@ -385,6 +416,20 @@ export default function SemanticAnalysisPage() {
                       ))}
                     </div>
                   </div>
+                  {selectedForCompare.size > 0 && (
+                    <div className="bg-[#1E293B] rounded-xl p-4 text-left space-y-2 mt-4">
+                      <p className="font-mono text-[10px] font-semibold text-[#64748B] tracking-[2px]">SELECTED FOR COMPARISON</p>
+                      {Array.from(selectedForCompare).map(id => {
+                        const page = landingPages.find(p => p.id === id)
+                        return page ? (
+                          <div key={id} className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#22D3EE]" />
+                            <span className="text-[12px] text-[#94A3B8] truncate">{page.title || page.url}</span>
+                          </div>
+                        ) : null
+                      })}
+                    </div>
+                  )}
                   {analyzedPages.length < 2 && (
                     <p className="text-xs text-[#F59E0B] mt-4">
                       You need at least 2 analyzed pages. Currently {analyzedPages.length} analyzed.
@@ -437,6 +482,7 @@ export default function SemanticAnalysisPage() {
                     screenshotUrl={selectedPage?.screenshotUrl}
                     landingPageId={selectedPage?.id}
                     onInsightSaved={() => toast.success('Insight saved!')}
+                    avgBenchmark={avgConversionScore}
                   />
                 ) : (
                   <div className="bg-[#1E293B] rounded-xl p-12 text-center">

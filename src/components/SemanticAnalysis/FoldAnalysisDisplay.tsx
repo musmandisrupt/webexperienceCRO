@@ -9,9 +9,10 @@ interface FoldAnalysisDisplayProps {
   screenshotUrl?: string
   landingPageId?: string
   onInsightSaved?: () => void
+  avgBenchmark?: string | null
 }
 
-export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl, landingPageId, onInsightSaved }: FoldAnalysisDisplayProps) {
+export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl, landingPageId, onInsightSaved, avgBenchmark }: FoldAnalysisDisplayProps) {
   const [expandedFolds, setExpandedFolds] = React.useState<Set<number>>(new Set([1, 2]))
   const [activeTab, setActiveTab] = React.useState<'flow' | 'insights' | 'folds' | 'frameworks'>('flow')
   const [showLegend, setShowLegend] = React.useState(false)
@@ -483,6 +484,9 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
                     </span>
                     <span className="text-[#475569] text-lg mb-1">/10</span>
                   </div>
+                  {avgBenchmark && (
+                    <p className="font-mono text-[9px] text-[#475569] mt-1">avg across tracked: {avgBenchmark}/10</p>
+                  )}
                   {analysis.overallScores.conversionJustification && (
                     <p className="text-xs text-[#64748B] leading-relaxed">{analysis.overallScores.conversionJustification}</p>
                   )}
@@ -515,6 +519,71 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
               )}
             </>
           )}
+
+          {(analysis as any).offerDeconstruction && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#22D3EE] tracking-[2px] mb-4">OFFER DECONSTRUCTION</p>
+              <div className="space-y-3">
+                {[
+                  { label: 'CORE PROMISE', value: (analysis as any).offerDeconstruction.corePromise, color: '#22D3EE' },
+                  { label: 'HOOK MECHANIC', value: (analysis as any).offerDeconstruction.hookMechanic, color: '#F59E0B' },
+                  { label: 'PROOF MECHANISM', value: (analysis as any).offerDeconstruction.proofMechanism, color: '#818CF8' },
+                  { label: 'URGENCY', value: (analysis as any).offerDeconstruction.urgencyMechanism, color: '#F472B6' },
+                ].map(({ label, value, color }) => value ? (
+                  <div key={label} className="flex items-start gap-3">
+                    <p className="font-mono text-[9px] font-semibold tracking-[1px] w-28 flex-shrink-0 mt-0.5" style={{ color }}>{label}</p>
+                    <p className="text-xs text-[#94A3B8]">{value}</p>
+                  </div>
+                ) : null)}
+                {(analysis as any).offerDeconstruction.riskTransfer?.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <p className="font-mono text-[9px] font-semibold tracking-[1px] w-28 flex-shrink-0 mt-0.5 text-[#22D3EE]">RISK TRANSFER</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(analysis as any).offerDeconstruction.riskTransfer.map((r: string, i: number) => (
+                        <span key={i} className="px-2 py-0.5 rounded text-[11px] text-[#94A3B8] bg-[#22D3EE]/10 border border-[#22D3EE]/20">{r}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(analysis as any).offerDeconstruction.offerStrengthScore && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-[#0F172A]">
+                    <p className="font-mono text-[9px] font-semibold tracking-[1px] w-28 flex-shrink-0 text-[#64748B]">OFFER STRENGTH</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-1.5 rounded-full bg-[#0A0F1C]">
+                        <div className="h-1.5 rounded-full bg-[#22D3EE]" style={{ width: `${(analysis as any).offerDeconstruction.offerStrengthScore * 10}%` }} />
+                      </div>
+                      <span className="font-mono text-xs font-bold text-[#22D3EE]">{(analysis as any).offerDeconstruction.offerStrengthScore}/10</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {(analysis as any).voiceTone && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#818CF8] tracking-[2px] mb-4">VOICE & TONE FINGERPRINT</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#0F172A] rounded-lg p-3">
+                  <p className="font-mono text-[9px] text-[#475569] mb-1">FORMALITY</p>
+                  <p className="text-sm font-bold text-white">{(analysis as any).voiceTone.formalityLevel}/10</p>
+                </div>
+                <div className="bg-[#0F172A] rounded-lg p-3">
+                  <p className="font-mono text-[9px] text-[#475569] mb-1">READING LEVEL</p>
+                  <p className="text-sm font-bold text-white">{(analysis as any).voiceTone.readingLevel}</p>
+                </div>
+                <div className="bg-[#0F172A] rounded-lg p-3">
+                  <p className="font-mono text-[9px] text-[#475569] mb-1">ARCHETYPE</p>
+                  <p className="text-sm font-bold text-[#818CF8] capitalize">{(analysis as any).voiceTone.personalityArchetype}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <span className="font-mono text-[10px] text-[#475569]">{(analysis as any).voiceTone.fearVsAspiration}</span>
+                <span className="font-mono text-[10px] text-[#475569]">Style: {(analysis as any).voiceTone.sentenceStyle}</span>
+                <span className="font-mono text-[10px] text-[#475569]">Jargon: {(analysis as any).voiceTone.jargonDensity}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -544,6 +613,69 @@ export default function FoldAnalysisDisplay({ analysis, isLoading, screenshotUrl
                           </span>
                         ))}
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {(analysis as any).objectionMap && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#F59E0B] tracking-[2px] mb-4">OBJECTION MAP</p>
+              {(analysis as any).objectionMap.handled?.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <p className="font-mono text-[9px] text-[#475569] tracking-[1px]">HANDLED</p>
+                  {(analysis as any).objectionMap.handled.map((obj: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3 bg-[#0F172A] rounded-lg p-3">
+                      <span className="font-mono text-[10px] font-bold text-[#22D3EE] bg-[#22D3EE]/10 px-1.5 py-0.5 rounded flex-shrink-0">F{obj.foldIndex}</span>
+                      <div className="flex-1">
+                        <p className="text-xs text-white font-medium">{obj.objection}</p>
+                        <p className="text-[11px] text-[#64748B] mt-0.5">{obj.mechanism}</p>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold" style={{ color: obj.score >= 7 ? '#22D3EE' : '#F59E0B' }}>{obj.score}/10</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(analysis as any).objectionMap.unhandled?.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="font-mono text-[9px] text-[#EF4444] tracking-[1px]">UNHANDLED OBJECTIONS</p>
+                  {(analysis as any).objectionMap.unhandled.map((obj: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+                      <span className="text-xs text-[#94A3B8]">{obj}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(analysis as any).psychologicalTriggers && (
+            <div className="bg-[#1E293B] rounded-xl p-5">
+              <p className="font-mono text-[10px] font-semibold text-[#F472B6] tracking-[2px] mb-4">CIALDINI'S PRINCIPLES</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { key: 'scarcity', label: 'Scarcity', icon: '\u23F3' },
+                  { key: 'authority', label: 'Authority', icon: '\uD83C\uDFC6' },
+                  { key: 'socialProof', label: 'Social Proof', icon: '\uD83D\uDC65' },
+                  { key: 'reciprocity', label: 'Reciprocity', icon: '\uD83C\uDF81' },
+                  { key: 'commitment', label: 'Commitment', icon: '\uD83E\uDD1D' },
+                  { key: 'liking', label: 'Liking', icon: '\u2764\uFE0F' },
+                ].map(({ key, label, icon }) => {
+                  const trigger = (analysis as any).psychologicalTriggers[key]
+                  if (!trigger) return null
+                  return (
+                    <div key={key} className={`rounded-lg p-3 ${trigger.present ? 'bg-[#0F172A]' : 'bg-[#0F172A]/50 opacity-50'}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-white">{icon} {label}</span>
+                        {trigger.present && <span className="font-mono text-[10px] font-bold text-[#22D3EE]">{trigger.score}/10</span>}
+                      </div>
+                      {trigger.present && trigger.evidence && (
+                        <p className="text-[11px] text-[#64748B] leading-relaxed">{trigger.evidence}</p>
+                      )}
+                      {!trigger.present && <p className="text-[11px] text-[#475569]">Not detected</p>}
                     </div>
                   )
                 })}

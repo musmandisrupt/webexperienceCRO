@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 })
     }
 
-    const { url, competitorId, deviceType = 'desktop', fullPage = true, progressive = false } = body
+    const { url, competitorId, deviceType = 'desktop', fullPage = true, progressive = false, isOwned = false } = body
 
     if (!url) return NextResponse.json({ success: false, error: 'URL is required' }, { status: 400 })
     try { new URL(url) } catch {
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (competitorId) landingPageData.competitorId = competitorId
+    if (isOwned) landingPageData.isOwned = true
 
     const landingPage = await prisma.landingPage.create({
       data: landingPageData,

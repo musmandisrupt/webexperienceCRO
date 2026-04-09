@@ -379,6 +379,30 @@ Perform the following analysis:
 
 5. GAP ANALYSIS: Identify specific missing elements that would improve conversion rate, with expected impact.
 
+6. OFFER DECONSTRUCTION: Analyze the page's core offer structure:
+   - corePromise: The specific outcome promised in one sentence
+   - riskTransfer: All risk-reduction mechanisms (free trial, guarantee, no CC, refund policy)
+   - urgencyMechanism: How urgency is created (deadline, scarcity, or none)
+   - proofMechanism: Primary proof type (testimonial, stat, logo wall, case study)
+   - hookMechanic: The psychological hook in the hero (fear/aspiration/curiosity/authority/social proof)
+   - offerStrengthScore: 1-10 how compelling the total offer is
+
+7. VOICE & TONE FINGERPRINT: Analyze the writing style:
+   - formalityLevel: 1-10 (1=casual, 10=corporate)
+   - fearVsAspiration: percentage split (e.g., "30% fear, 70% aspiration")
+   - jargonDensity: "low" | "medium" | "high" with 2-3 example jargon terms
+   - readingLevel: grade level (e.g., "Grade 8")
+   - sentenceStyle: "short-punchy" | "long-explanatory" | "mixed"
+   - personalityArchetype: "challenger" | "advisor" | "expert" | "friend" | "authority"
+
+8. OBJECTION MAP: List every objection this page proactively addresses:
+   - Each with: objection text, foldIndex where handled, handlingMechanism, isExplicit (boolean), effectivenessScore (1-10)
+   - Also list 2-3 unhandled objections a typical buyer would have
+
+9. PSYCHOLOGICAL TRIGGER AUDIT (Cialdini's 6 Principles):
+   - For each: scarcity, authority, socialProof, reciprocity, commitment, liking
+   - Report: present (boolean), evidence (string), foldIndex (number), effectivenessScore (1-10)
+
 Return ONLY valid JSON in this exact format:
 {
   "pageFlow": {
@@ -457,6 +481,37 @@ Return ONLY valid JSON in this exact format:
       "designVisibility": "string assessment",
       "repetitionFrequency": "string assessment"
     }
+  },
+  "offerDeconstruction": {
+    "corePromise": "string",
+    "riskTransfer": ["string"],
+    "urgencyMechanism": "string",
+    "proofMechanism": "string",
+    "hookMechanic": "string",
+    "offerStrengthScore": 7
+  },
+  "voiceTone": {
+    "formalityLevel": 7,
+    "fearVsAspiration": "20% fear, 80% aspiration",
+    "jargonDensity": "medium",
+    "jargonExamples": ["term1", "term2"],
+    "readingLevel": "Grade 8",
+    "sentenceStyle": "mixed",
+    "personalityArchetype": "advisor"
+  },
+  "objectionMap": {
+    "handled": [
+      { "objection": "string", "foldIndex": 1, "mechanism": "string", "explicit": true, "score": 7 }
+    ],
+    "unhandled": ["string"]
+  },
+  "psychologicalTriggers": {
+    "scarcity": { "present": false, "evidence": "", "foldIndex": 0, "score": 0 },
+    "authority": { "present": true, "evidence": "string", "foldIndex": 1, "score": 8 },
+    "socialProof": { "present": true, "evidence": "string", "foldIndex": 2, "score": 7 },
+    "reciprocity": { "present": false, "evidence": "", "foldIndex": 0, "score": 0 },
+    "commitment": { "present": false, "evidence": "", "foldIndex": 0, "score": 0 },
+    "liking": { "present": true, "evidence": "string", "foldIndex": 1, "score": 6 }
   },
   "metadata": {
     "analysisDate": "${new Date().toISOString()}",

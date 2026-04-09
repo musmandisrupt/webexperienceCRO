@@ -10,11 +10,13 @@ import {
   LightBulbIcon,
   CameraIcon,
   CpuChipIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Capture', href: '/capture', icon: CameraIcon },
+  { name: 'My Pages', href: '/my-pages', icon: DocumentTextIcon },
   { name: 'Landing Pages', href: '/landing-pages', icon: PhotoIcon },
   { name: 'Competitors', href: '/competitors', icon: BuildingStorefrontIcon },
   { name: 'Semantic Analysis', href: '/semantic-analysis', icon: CpuChipIcon },
