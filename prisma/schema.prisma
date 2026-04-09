@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Competitor {
+  id          String   @id @default(cuid())
+  name        String
+  website     String   @unique
+  description String?
+  industry    String?
+  groupId     String?
+  group       CompetitorGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  landingPages LandingPage[]
+
+  @@map("competitors")
+}
+
+model LandingPage {
+  id                String   @id @default(cuid())
+  url               String
+  title             String?
+  description       String?
+  screenshotUrl     String?
+  copiedText        String?
+  techStack         String? // JSON string of detected technologies
+  visualSections    String? // JSON string of visual sections
+  contentHierarchy  String? // JSON string of content hierarchy
+  semanticAnalysis  String? // JSON string of semantic analysis results
+  capturedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  competitorId      String?
+  competitor        Competitor? @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  
+  insights          Insight[]
+
+  @@map("landing_pages")
+}
+
+model Insight {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // STEAL, ADAPT, or AVOID
+  confidence  Int      @default(3) // 1-5 scale
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  landingPageId String
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  
+  weeklyReports WeeklyReportInsight[]
+
+  @@map("insights")
+}
+
+model WeeklyReport {
+  id          String   @id @default(cuid())
+  title       String
+  weekStart   DateTime
+  weekEnd     DateTime
+  summary     String?
+  createdAt   DateTime @default(now())
+  
+  insights    WeeklyReportInsight[]
+
+  @@map("weekly_reports")
+}
+
+model CompetitorGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  industry    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  competitors Competitor[]
+
+  @@map("competitor_groups")
+}
+
+model WeeklyReportInsight {
+  id             String @id @default(cuid())
+  weeklyReportId String
+  insightId      String
+  
+  weeklyReport   WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  insight        Insight      @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@unique([weeklyReportId, insightId])
+  @@map("weekly_report_insights")
+}
+
+
