@@ -184,20 +184,23 @@ export async function firecrawlCapture(options: FirecrawlCaptureOptions): Promis
   const data = result.data || result
   console.log(`[Firecrawl] Scrape complete. Title: ${data.metadata?.title || 'N/A'}`)
 
-  // Download screenshot locally
+  // Use Firecrawl's hosted screenshot URL directly (works on Railway where filesystem is ephemeral)
+  // Also try to save locally for local dev (fallback to remote URL if save fails)
   let screenshotPath = ''
-  const screenshotUrl = data.screenshot
+  const screenshotUrl = data.screenshot || ''
   if (screenshotUrl) {
     const sanitizedUrl = options.url.replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9.-]/g, '-').substring(0, 80)
     const filename = `${Date.now()}-${sanitizedUrl}.png`
-    screenshotPath = `/screenshots/${filename}`
+    const localPath = `/screenshots/${filename}`
 
     try {
-      await downloadImage(screenshotUrl, screenshotPath)
-      console.log(`[Firecrawl] Screenshot saved to ${screenshotPath}`)
-    } catch (err) {
-      console.error(`[Firecrawl] Failed to download screenshot:`, err)
-      screenshotPath = ''
+      await downloadImage(screenshotUrl, localPath)
+      screenshotPath = localPath // local file saved successfully
+      console.log(`[Firecrawl] Screenshot saved locally: ${localPath}`)
+    } catch {
+      // Local save failed (e.g. Railway) — use the remote URL directly
+      screenshotPath = screenshotUrl
+      console.log(`[Firecrawl] Using remote screenshot URL directly`)
     }
   }
 
