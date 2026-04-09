@@ -184,23 +184,37 @@ export async function firecrawlCapture(options: FirecrawlCaptureOptions): Promis
   const data = result.data || result
   console.log(`[Firecrawl] Scrape complete. Title: ${data.metadata?.title || 'N/A'}`)
 
-  // Use Firecrawl's hosted screenshot URL directly (works on Railway where filesystem is ephemeral)
-  // Also try to save locally for local dev (fallback to remote URL if save fails)
+  // Save screenshot — try volume (/data/screenshots) first, then public/, then use remote URL
   let screenshotPath = ''
   const screenshotUrl = data.screenshot || ''
   if (screenshotUrl) {
     const sanitizedUrl = options.url.replace(/^https?:\/\//, '').replace(/[^a-zA-Z0-9.-]/g, '-').substring(0, 80)
     const filename = `${Date.now()}-${sanitizedUrl}.png`
-    const localPath = `/screenshots/${filename}`
+
+    // Try Railway volume first
+    const volumeDir = '/data/screenshots'
+    const publicDir = path.join(process.cwd(), 'public', 'screenshots')
 
     try {
-      await downloadImage(screenshotUrl, localPath)
-      screenshotPath = localPath // local file saved successfully
-      console.log(`[Firecrawl] Screenshot saved locally: ${localPath}`)
-    } catch {
-      // Local save failed (e.g. Railway) — use the remote URL directly
+      if (fs.existsSync('/data') || process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+        // Railway volume available
+        if (!fs.existsSync(volumeDir)) fs.mkdirSync(volumeDir, { recursive: true })
+        const response = await fetch(screenshotUrl)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const buffer = Buffer.from(await response.arrayBuffer())
+        fs.writeFileSync(path.join(volumeDir, filename), buffer)
+        screenshotPath = `/api/screenshots/${filename}`
+        console.log(`[Firecrawl] Screenshot saved to volume: ${volumeDir}/${filename} (${(buffer.length / 1024).toFixed(0)} KB)`)
+      } else {
+        // Local dev — save to public/
+        await downloadImage(screenshotUrl, `/screenshots/${filename}`)
+        screenshotPath = `/screenshots/${filename}`
+        console.log(`[Firecrawl] Screenshot saved locally: ${screenshotPath}`)
+      }
+    } catch (err) {
+      // All saves failed — use remote URL
       screenshotPath = screenshotUrl
-      console.log(`[Firecrawl] Using remote screenshot URL directly`)
+      console.log(`[Firecrawl] Using remote screenshot URL: ${screenshotUrl.substring(0, 80)}...`)
     }
   }
 
