@@ -103,7 +103,7 @@ function extractFrameworks(analysis: any): string[] {
     }
   }
 
-  return [...new Set(frameworks)]
+  return Array.from(new Set(frameworks))
 }
 
 /**
@@ -157,7 +157,7 @@ function buildFrameworkUsage(pages: ParsedPage[]): FrameworkUsageEntry[] {
 
     entries.push({
       framework,
-      usedBy: [...data.competitors],
+      usedBy: Array.from(data.competitors),
       frequency,
       avgScore,
       verdict,
@@ -471,7 +471,7 @@ function buildBlueprint(
 
   // Pick the best fold (highest score) at each position
   const recommendedFolds: BlueprintFold[] = []
-  const sortedPositions = [...foldBucket.keys()].sort((a, b) => a - b)
+  const sortedPositions = Array.from(foldBucket.keys()).sort((a, b) => a - b)
 
   for (const pos of sortedPositions) {
     const candidates = foldBucket.get(pos)!
@@ -482,7 +482,7 @@ function buildBlueprint(
     recommendedFolds.push({
       foldNumber: pos,
       purpose: best.purpose,
-      elements: [...new Set(candidates.flatMap((c) => c.elements))].slice(0, 8),
+      elements: Array.from(new Set(candidates.flatMap((c) => c.elements))).slice(0, 8),
       framework: best.framework,
     })
   }
@@ -503,7 +503,7 @@ function buildBlueprint(
   }
 
   const threshold = Math.ceil(pages.length / 2)
-  const mustHaveElements = [...elementCount.entries()]
+  const mustHaveElements = Array.from(elementCount.entries())
     .filter(([, count]) => count >= threshold)
     .sort((a, b) => b[1] - a[1])
     .map(([el]) => el)
@@ -521,7 +521,7 @@ function buildBlueprint(
     recommendedFramework,
     recommendedFolds,
     mustHaveElements,
-    avoidElements: [...avoidSet],
+    avoidElements: Array.from(avoidSet),
   }
 }
 
@@ -584,7 +584,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the comparison report
-    const competitors = [...new Set(parsedPages.map((p) => p.competitorName))]
+    const competitors = Array.from(new Set(parsedPages.map((p) => p.competitorName)))
     const frameworkUsage = buildFrameworkUsage(parsedPages)
     const commonPatterns = buildCommonPatterns(parsedPages)
     const structureComparison = buildStructureComparison(parsedPages)

@@ -133,8 +133,8 @@ function parseMarkdownAnalysis(markdownText: string): any {
     console.log('Parsing markdown analysis...')
     
     // Extract fold analysis from markdown - simplified approach
-    const foldAnalysis = []
-    
+    const foldAnalysis: any[] = []
+
     // Look for fold patterns like "1. **Header Navigation (Fold 1)**"
     const foldMatches = markdownText.match(/(\d+)\. \*\*(.*?)\*\*/g)
     if (foldMatches) {
@@ -202,7 +202,7 @@ function parseMarkdownAnalysis(markdownText: string): any {
     
     // Extract user journey - simplified
     const userJourneyMatch = markdownText.match(/\*\*UserJourney\*\*:\s*\n((?:\s*\d+\. .*\n?)*)/s)
-    let userJourney = []
+    let userJourney: string[] = []
     if (userJourneyMatch) {
       const journeyLines = userJourneyMatch[1].match(/\d+\. (.*?)(?=\n|$)/g)
       if (journeyLines) {
@@ -264,7 +264,7 @@ function parseMarkdownAnalysis(markdownText: string): any {
             impact: 'Missing trust signals can reduce conversion by 20-30%',
             recommendation: 'Add customer testimonials with specific results and names'
           }] : []),
-          ...(foldAnalysis.every(f => !f.conversionPoints.some(cp => cp.toLowerCase().includes('cta'))) ? [{
+          ...(foldAnalysis.every((f: any) => !f.conversionPoints.some((cp: any) => cp.toLowerCase().includes('cta'))) ? [{
             issue: 'No strong CTA detected across folds',
             impact: 'Users may lack a clear next step',
             recommendation: 'Add benefit-oriented CTAs at key decision points'
@@ -273,7 +273,7 @@ function parseMarkdownAnalysis(markdownText: string): any {
         conversionScores: foldAnalysis.map((fold, idx) => {
           // Score based on fold position and detected purpose
           let score = 5
-          if (fold.conversionPoints.some(cp => cp.toLowerCase().includes('cta'))) score += 2
+          if (fold.conversionPoints.some((cp: any) => cp.toLowerCase().includes('cta'))) score += 2
           if (fold.purpose.includes('trust') || fold.purpose.includes('proof')) score += 1
           if (fold.purpose.includes('value proposition')) score += 1
           if (fold.elements.length > 3) score += 1
@@ -1031,9 +1031,9 @@ export async function POST(request: NextRequest) {
     // Perform LLM analysis
     const analysisResult = await analyzePageWithLLM(
       landingPage.url,
-      landingPage.title,
+      landingPage.title || '',
       landingPage.description || '',
-      landingPage.copiedText,
+      landingPage.copiedText || '',
       visualSections,
       contentHierarchy,
       landingPage.screenshotUrl || ''
